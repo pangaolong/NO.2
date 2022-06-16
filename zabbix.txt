@@ -2,11 +2,13 @@ Zabbix服务安装部署及监控配置
 整个环境所需要的软件包:
 php-5.6.13	
 libmcrypt-2.5.8 
-mysql-5.6.26nginx-1.8.0 
+mysql-5.6.26
+nginx-1.8.0 
 zabbix-3.4.3
-当然前面我已经配置好了php libmcrypt mysql nginx，
-就只有zabbix没有配置了
-先找到这个软件包 由于我是通过wget的方式获取软件包的
+我们需要先构建LNMP的环境，，因为zabbix通过PHP页面展示
+
+
+先找到这个软件包
 wget -c http://jaist.dl.sourceforge.net/project/zabbix/ZABBIX%20Latest%20Stable/3.4.3/zabbix-3.4.3.tar.gz
 
 先进入到数据库
@@ -29,18 +31,24 @@ cd /usr/local/src/zabbix-3.4.3/
 编译安装 zabbix
 [root@xuegod63 ~]# groupadd zabbix
 [root@xuegod63 ~]# useradd -s /sbin/nologin -g zabbix zabbix #创建用户
-[root@xuegod63zabbix-3.4.3]# yum install -y net-snmp-devel  yum install libevent libevent-devel -y#解决依赖
+[root@xuegod63zabbix-3.4.3]# yum install -y net-snmp-devel  yum install libevent libevent-devel -y
+#解决依赖
 [root@xuegod63zabbix-3.4.3]#  ./configure --prefix=/usr/local/zabbix --enable-server --enable-agent --with-mysql=/usr/local/mysql/bin/mysql_config --with-net-snmp --with-libcurl               
 #参数说明
+**************************************************************************
 --prefix=	 #指定路径
 --enable-server	 #Server 支持
 --enable-agent	 #支持 Zabbix 客户端
 --with-mysql     #指定 MySql 库可以选择自定路径 mysql_config，mysql_config 是命令，用于编译 mysql 客户端程序
 --with-net-snmp	 #支持 snmp 协议，需要安装 net-snmp-devel 包
 --with-libcurl   #支持 CURL 功能，libcurl 主要功能就是用不同的协议连接不同的服务器，
-libcurl          #当前支持的协议有 http，https，ftp，gopher，telent，dict，file，和 ldap 协议其他参数：
+libcurl          #当前支持的协议有 http，https，ftp，gopher，telent，dict，file，和 ldap 协议
+其他参数：
 --enable-proxy	#指的是支持 zabbix 代理服务器，zabbix proxy 是一个监控代理服务器，它收集到监控数据，选存放在缓冲区，保存的时间可以通过配置文件设定，然后再传送的 zabbix server。监控代理服务需要一个独立的数据库。
-用 zabbix proxy 的好处：进程监控，当监控的位置通信不便时，当通讯上千台设备的时候，使用 zabbix_proxy 可以简化维护分布式监控，降低 zabbix server 的负负载，
+用 zabbix proxy 的好处：进程监控，当监控的位置通信不便时，当通讯上千台设备的时候，使用 zabbix_proxy 可以简化维护分布式监控，降低 zabbix server 的负负载
+*************************************************************************
+
+
 看到如下信息，预编译就没有什么问题
 ……
 ************************************************************	
@@ -66,11 +74,11 @@ DBSocket=/tmp/mysql.sock
 
 监控 Zabbix Server 本身
 监控本身，意思是本身作为服务器之外，自己也做自己的客户端，也要使用agentd这个代理者 配置文件中，有 agentd 和 agent 两个配置文件，前者是守护进程，后者依赖 xinetd 
+
 [root@xuegod63~]#vim /usr/local/zabbix/etc/zabbix_agentd.conf
 Server=127.0.0.1	#默认监控服务器自己，这三行不用改
 Hostname=Zabbix serverUnsafe
-UserParameters=1	#允许所有的字符是在用户定义的参数，参数传递，也就是支持自定义脚本
-其中 Server 和 ServerActive 都指定 zabbixserver 的 IP 地址，不同的是，前者是被动后者是主动。也就是说前者允许 127.0.0.1 这个 ip 来我这取数据。而 serverActive 的 127.0.0.1 的意思是，客户端主动提交数据给他。
+UserParameters=1	#允许所有的字符是在用户定义的参数，参数传递，也就是支持自定义脚,其中 Server 和 ServerActive 都指定 zabbixserver 的 IP 地址，不同的是，前者是被动后者是主动。也就是说前者允许 127.0.0.1 这个 ip 来我这取数据。而 serverActive 的 127.0.0.1 的意思是，客户端主动提交数据给他。
 
 启动服务
 如果 zabbix 用户不存在， 将以 root 运行，新建之后，如果 zabbix 存在，那么直接可以用 zabbix 运行
@@ -83,6 +91,7 @@ BASEDIR=/usr/local/zabbix  #找到此行，并修改 
 [root@xuegod63 init.d]# vim /etc/init.d/zabbix_agentd
 BASEDIR=/usr/local/zabbix  #找到此行，并修改 
 ***注意启动脚本中的路径，确认其是安装路径下***
+
 /etc/rc.d/init.d/zabbix_server start
 /etc/rc.d/init.d/zabbix_agentd start
 chkconfig --add zabbix_server
@@ -120,7 +129,8 @@ BASEDIR=/usr/local/zabbix  #找到此行，并修改 
 [root@xuegod63 init.d]# vim /etc/init.d/zabbix_agentd ； cd
 BASEDIR=/usr/local/zabbix  #找到此行，并修改 	
 [root@localhost core]# vim /etc/rc.d/init.d/zabbix_agentd 
-[root@localhost core]# /etc/init.d/zabbix_agentd startReloading systemd:                  [  OK  ]
+[root@localhost core]# /etc/init.d/zabbix_agentd start
+Reloading systemd:                  [  OK  ]
 Starting zabbix_agentd (via systemctl):                    [  OK  ]
 [root@localhost core]# chkconfig zabbix_server on
 [root@localhost core]# chkconfig zabbix_agentd on
@@ -133,17 +143,17 @@ Starting zabbix_agentd (via systemctl):                    [  OK  ]
 [root@xuegod63 ~]# vim /usr/local/nginx/conf/nginx.conf
 location / {
 root	html;
-index	index.php index.html index.htm;	#找到此行内容，添加index.php
+index	index.php(这里！！！！！！) index.html index.htm;	#找到此行内容，添加index.php
 }
 重启nginx服务和php-fpm服务
 [root@xuegod63 ~]# /usr/local/nginx/sbin/nginx -s reload ; 
 [root@xuegod63 ~]#/etc/init.d/zabbix_server restart
 [root@xuegod63 ~]#/etc/init.d/php-fpm restart
 
-打开网页安装 zabbix 通过linux自带的浏览器访问自己的linux的IP地址
-开始检查环境，如图，发现很多环境不符合条件
-https://uploader.shimo.im/f/xunjDbzqmX9ncNWh.png!thumbnail
-(图片liunx暂时不支持,可以通过访问上面的链接查看图片)
+尝试打开网页安装zabbix web
+浏览器输入自己的服务器公网ip地址即可
+
+开始检查环境，会发现很多环境不符合条件
 
 编辑 php.ini 文件，修改环境
 [root@xuegod63 ~]# vim /usr/local/php/php.ini
@@ -154,10 +164,11 @@ date.timezone = Asia/Shanghai	#此行有注释，去注释并修改
 always_populate_raw_post_data = -1	 #此行取消注释即可
 mysqli.default_socket = /tmp/mysql.sock  #指定php连接mysql的sock路径
 [root@xuegod63 ~]# /etc/init.d/php-fpm restart  #重启fpm
-刷新页面
 
-https://uploader.shimo.im/f/guRu8daot8jtfUaa.png!thumbnail
-(图片liunx暂时不支持,可以通过访问上面的链接查看图片)
+
+刷新网址页面
+
+
 
 如果提示没有安装PHP LDAP模块，为了不影响后面的功能，现在把这个模块重新编译安装进去：可以单独把这个模块编译安装进来：
 [root@xuegod63zabbix-3.4.3]# cd /usr/local/src/php-5.6.13/ext/
@@ -176,19 +187,12 @@ Zend Extension Api No:   220131226
 [root@xuegod63 ~]# vim /usr/local/php/php.ini
 添加：extension=ldap.so
 [root@xuegod63 ~]# /etc/init.d/php-fpm restart
-再次刷新即可
 
-https://uploader.shimo.im/f/tlqfZ0oPTByLCLoh.png!thumbnail
-(图片liunx暂时不支持,可以通过访问上面的链接查看图片)
-以下默认，直接下一步
-https://uploader.shimo.im/f/wwO16LecmIipxcSJ.png!thumbnail
-(图片liunx暂时不支持,可以通过访问上面的链接查看图片)
-下一步：
-https://uploader.shimo.im/f/nl56sGhvdsv6yiRU.png!thumbnail
-图片liunx暂时不支持,可以通过访问上面的链接查看图片)
 
-如果写入失败，直接download这个配置文件，然后上传上去
+将下列代码写入文件
 [root@xuegod63~]#vim /usr/local/nginx/html/conf/zabbix.conf.php
+
+
 <?php// Zabbix GUI configuration file.
 global $DB;$DB['TYPE']     = 'MYSQL';
 $DB['SERVER']   = '127.0.0.1';
@@ -202,33 +206,15 @@ $ZBX_SERVER      = 'localhost';
 $ZBX_SERVER_PORT = '10051';
 $ZBX_SERVER_NAME = '';
 $IMAGE_FORMAT_DEFAULT = IMAGE_FORMAT_PNG;
-配置文件我已经拿下来了,你可以cp上面的配置文件,可以下载网页提供配置文件
+（网页上会有此文件，，下载复制即可，也可以复制我这个）
 
- #然后刷新如果显示成功	点击 Finish，完成安装！登陆 Zabbix 并配置 登陆之后我们修改语言 默认用户名和密码分别为  admin，zabbix 
-https://uploader.shimo.im/f/u1eqjWUJSOTl8XZ4.png!thumbnail
-(图片liunx暂时不支持,可以通过访问上面的链接查看图片)
 
-https://uploader.shimo.im/f/1LAXPOmQQfTGadSw.png!thumbnail
-(图片liunx暂时不支持,可以通过访问上面的链接查看图片)
+进入网站之后点击右上角可修改语言为中文
 
-点击右上角用户，然后选择语言
-https://uploader.shimo.im/f/JKgSnzStrxx0eYDW.png!thumbnail
-(图片liunx暂时不支持,可以通过访问上面的链接查看图片)
-然后 Update 即可，页面变为中文
 
 点击配置-主机 启用本主机（默认没有启动，点击后面红色的停用，则启用）
-https://uploader.shimo.im/f/CUjOjAQpSMzdejZP.png!thumbnail
-(图片liunx暂时不支持,可以通过访问上面的链接查看图片)
+
 
 把zabbix_agent 也启动起来：
 [root@xuegod63 ~]# /usr/local/zabbix/sbin/zabbix_agentd 或者/usr/local/zabbix/sbin/zabbix_agentd start
-再次刷新页面，可以看到，agent状态已经正常
-https://uploader.shimo.im/f/pCKZPWHZCcNZqU9v.png!thumbnail
-(图片liunx暂时不支持,可以通过访问上面的链接查看图片)
-
-可以看到已经开始出图：
-https://uploader.shimo.im/f/ie0FrfI00psZ9wbe.png!thumbnail
-(图片liunx暂时不支持,可以通过访问上面的链接查看图片)
-
-具体的操作可以看这一篇文章
-https://shimo.im/docs/L9kBMObDx4HgEVqK/read
+再次刷新页面，可以看到，agent状态已经正常,变绿即可！！
